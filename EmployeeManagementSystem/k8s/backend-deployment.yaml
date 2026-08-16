@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: employee-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z -w 2 mysql-service 3306; do echo waiting for mysql; sleep 2; done;']
+      containers:
+        - name: backend
+          image: employee-backend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: db-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: DB_PASSWORD
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=75.0"
+          resources:
+            requests:
+              memory: "384Mi"
+              cpu: "250m"
+            limits:
+              memory: "768Mi"
+              cpu: "500m"
+
+          # 1. KUBERNETES WILL WAIT HERE UNTIL PORT 8080 OPENS
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30  # Wait 30s before first check
+            periodSeconds: 10        # Check every 10s
+            failureThreshold: 18     # Try 18 times (Total wait time: ~3.5 minutes)
+
+          # 2. RUNS ONLY AFTER STARTUP PROBE SUCCEEDS
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # 3. CONTROLS WHEN TRAFFIC IS ROUTED TO THE POD
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: employee-system
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  selector:
+    app: backend-api

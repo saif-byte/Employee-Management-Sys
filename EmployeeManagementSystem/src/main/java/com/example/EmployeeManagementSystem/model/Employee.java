@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 @Table(name = "employees")
 public class Employee {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     @Column(name = "first_name",nullable = false)
     private String firstname;
