@@ -1,0 +1,25 @@
+# Compiled class files and Maven output
+target/
+*.class
+*.jar
+*.war
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS system files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+logs/
+
+# Sensitive data
+secrets.yaml
+*.env
